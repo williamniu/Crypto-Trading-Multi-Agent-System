@@ -1,0 +1,23 @@
+# Python cache and bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+
+# Virtual environments
+CryptoMAS/
+.venv/
+venv/
+
+# Build and packaging artifacts
+build/
+dist/
+*.egg-info/
+
+# OS/editor
+.DS_Store
+.vscode/
+
+# Env files
+.env
