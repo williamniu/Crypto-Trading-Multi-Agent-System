@@ -25,6 +25,7 @@ class TradePlan(BaseModel):
 	notes: list[str] = Field(default_factory=list)
 	ta_signal: Literal["bullish", "bearish", "neutral"]
 	sentiment_score: float = Field(ge=-1, le=1)
+	llm_summary: str | None = None
 
 	@model_validator(mode="after")
 	def validate_percentages(self) -> "TradePlan":

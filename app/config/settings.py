@@ -39,6 +39,10 @@ class Settings(BaseModel):
     llm_api_key: str = ""
     llm_model: str = ""
     llm_temperature: float = Field(default=0.2, ge=0, le=2)
+    llm_enable_ta: bool = True
+    llm_enable_sentiment: bool = True
+    llm_enable_risk: bool = True
+    llm_enable_master: bool = True
     market_data_provider: Literal["mock", "weex"] = "mock"
     weex_market_type: Literal["spot", "contract"] = "contract"
     sentiment_provider: Literal["mock", "tavily"] = "mock"
@@ -86,6 +90,10 @@ def load_settings() -> Settings:
         llm_api_key=os.getenv("LLM_API_KEY", ""),
         llm_model=os.getenv("LLM_MODEL", ""),
         llm_temperature=float(os.getenv("LLM_TEMPERATURE", "0.2")),
+        llm_enable_ta=_get_bool("LLM_ENABLE_TA", True),
+        llm_enable_sentiment=_get_bool("LLM_ENABLE_SENTIMENT", True),
+        llm_enable_risk=_get_bool("LLM_ENABLE_RISK", True),
+        llm_enable_master=_get_bool("LLM_ENABLE_MASTER", True),
         market_data_provider=os.getenv("MARKET_DATA_PROVIDER", "mock"),
         weex_market_type=os.getenv("WEEX_MARKET_TYPE", "contract"),
         sentiment_provider=os.getenv("SENTIMENT_PROVIDER", "mock"),

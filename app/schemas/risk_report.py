@@ -12,3 +12,4 @@ class RiskReport(BaseModel):
 	exposure_ok: bool
 	approved: bool
 	reasons: list[str] = Field(default_factory=list)
+	llm_summary: str | None = None

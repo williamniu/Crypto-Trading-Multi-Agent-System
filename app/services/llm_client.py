@@ -26,6 +26,7 @@ class LLMClient:
         prompt: str,
         *,
         constraints: dict[str, Any] | None = None,
+        system_prompt: str | None = None,
     ) -> dict[str, Any]:
         if self.settings.llm_mode == "stub":
             return {
@@ -46,7 +47,7 @@ class LLMClient:
         if not self.settings.llm_model:
             raise ValueError("LLM_MODEL is required when llm_mode=openai_compatible")
 
-        system_prompt = (
+        resolved_system_prompt = system_prompt or (
             "You are a constrained trading workflow assistant. "
             "Do not make or override decisions. "
             "Only summarize the already-decided plan in one short sentence."
@@ -66,7 +67,7 @@ class LLMClient:
                 "model": self.settings.llm_model,
                 "temperature": self.settings.llm_temperature,
                 "messages": [
-                    {"role": "system", "content": system_prompt},
+                    {"role": "system", "content": resolved_system_prompt},
                     {"role": "user", "content": user_prompt},
                 ],
             },

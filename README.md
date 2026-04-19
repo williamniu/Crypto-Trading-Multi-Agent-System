@@ -254,6 +254,28 @@
 - 接入真实行情、新闻搜索与账户数据源
 - 加入历史回测与模拟执行
 
+## 当前 LLM 接入方式
+
+当前版本已经支持把 LLM 接到每个 agent，但位置是“受约束分析层”，不是“直接决策层”。
+
+- `TA agent` 会把 candles、指标、levels、deterministic signal 发送给 LLM，生成 `llm_summary`
+- `Sentiment agent` 会把 headlines、source items、sentiment score、event impact 发送给 LLM，生成 `llm_summary`
+- `Risk agent` 会把风险画像、draft plan、deterministic risk report 发送给 LLM，生成 `llm_summary`
+- `Master agent` 会把三个 report 和 final plan 发给 LLM，生成最终 `trade_plan.llm_summary`
+
+LLM 当前不会：
+
+- 覆盖 TA signal
+- 覆盖 sentiment score
+- 覆盖 risk approval
+- 直接决定 `BUY/SELL/HOLD`
+
+这意味着当前系统里 LLM 带来的价值主要是：
+
+- 提升分析解释能力
+- 提供更灵活的文本化结论
+- 为后续引入更强的模型/机器学习层预留接入口
+
 ### Phase 4: 真实交易前的最后一层
 
 - 沙盒账户联调

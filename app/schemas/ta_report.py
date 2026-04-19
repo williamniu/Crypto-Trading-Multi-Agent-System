@@ -34,3 +34,4 @@ class TAReport(BaseModel):
 	confidence: float = Field(ge=0, le=1)
 	indicators: TAIndicators
 	levels: TALevels
+	llm_summary: str | None = None

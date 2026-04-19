@@ -13,3 +13,4 @@ class SentimentReport(BaseModel):
 	sentiment_score: float = Field(ge=-1, le=1)
 	event_impact: Literal["positive", "negative", "neutral"]
 	headlines: list[str] = Field(default_factory=list)
+	llm_summary: str | None = None

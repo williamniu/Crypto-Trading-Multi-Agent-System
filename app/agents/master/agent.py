@@ -161,11 +161,11 @@ class MasterAgent(BaseAgent):
         sentiment_report: dict[str, Any],
         risk_report: dict[str, Any],
     ) -> dict[str, Any]:
-        if not self.llm_client.enabled:
+        if not (self.llm_client.enabled and self.llm_client.settings.llm_enable_master):
             return final_plan
 
         prompt = (
-            "Summarize this already-approved trading workflow output in one short sentence.\n"
+            "Summarize this already-decided trading workflow output in one concise sentence.\n"
             f"Plan: {final_plan}\n"
             f"TA: {ta_report}\n"
             f"Sentiment: {sentiment_report}\n"
@@ -176,11 +176,18 @@ class MasterAgent(BaseAgent):
             "do_not_change_approval": final_plan["approved"],
             "max_sentences": 1,
         }
-        llm_result = self.llm_client.generate(prompt, constraints=constraints)
+        llm_result = self.llm_client.generate(
+            prompt,
+            constraints=constraints,
+            system_prompt=(
+                "You are the master coordinator in a constrained trading system. "
+                "Use only the provided TA report, sentiment report, risk report, and final plan. "
+                "Do not override the final action or approval. "
+                "Return a concise summary of why the final plan looks the way it does."
+            ),
+        )
         llm_message = str(llm_result.get("message", "")).strip()
         if not llm_message:
             return final_plan
 
-        notes = list(final_plan.get("notes", []))
-        notes.append(f"LLM summary: {llm_message}")
-        return {**final_plan, "notes": notes}
+        return {**final_plan, "llm_summary": llm_message}
