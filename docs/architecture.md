@@ -3,7 +3,7 @@
 ## Goal
 
 This repository implements a deterministic MVP for a multi-agent crypto trading system.
-The current slice is intentionally synchronous, mock-driven, and policy-constrained so the behavior is easy to test, replay, and audit before any real exchange or LLM integration is introduced.
+The current slice remains synchronous and policy-constrained, with mock providers still available by default and optional read-only live provider integrations for market data, sentiment search, and account state.
 
 ## Main Roles
 
@@ -31,7 +31,7 @@ The current slice is intentionally synchronous, mock-driven, and policy-constrai
 - Role-specific toolsets prevent cross-agent leakage.
 - Explicit decision policies keep business logic centralized instead of hidden inside prompts.
 - Execution trace records stage transitions and tool I/O for offline replay.
-- Stable service interfaces (`market_data_service`, `news_service`, `risk_service`) make future upgrades easier without changing agent contracts.
+- Stable service interfaces (`market_data_service`, `news_service`, `risk_service`) make provider upgrades easier without changing agent contracts.
 
 ## Node Mapping For Future LangGraph Migration
 
@@ -52,4 +52,5 @@ The repository does not yet depend on LangGraph because the current project gove
 - Tool registration happens in the owning `toolset.py`.
 - No agent mutates another agent's internal state.
 - Risk approval is the final gate and overrides directional action when needed.
-- Services remain mocks or stubs during MVP stage.
+- Services can run in `mock` mode or read-only live-provider mode via configuration.
+- Order placement is still out of scope; the live integrations only read market, news, and account data.

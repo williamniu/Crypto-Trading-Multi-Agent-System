@@ -19,4 +19,10 @@ class FetchNewsTool(BaseTool):
 
     def run(self, payload: dict[str, Any]) -> dict[str, Any]:
         symbol = str(payload["symbol"]).upper()
-        return {"headlines": self.news_service.fetch_headlines(symbol=symbol)}
+        bundle = self.news_service.fetch_news_bundle(symbol=symbol)
+        return {
+            "provider": bundle.get("provider", "unknown"),
+            "headlines": bundle["headlines"],
+            "items": bundle.get("items", []),
+            "query": bundle.get("query", ""),
+        }

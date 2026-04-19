@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -9,10 +10,10 @@ from pydantic import BaseModel, ConfigDict, Field
 class RiskInput(BaseModel):
 	model_config = ConfigDict(extra="forbid")
 
-	account_balance: float = Field(gt=0)
-	risk_per_trade: float = Field(gt=0, le=1)
-	current_exposure: float = Field(ge=0, le=1)
-	max_exposure: float = Field(gt=0, le=1)
+	account_balance: float | None = Field(default=None, gt=0)
+	risk_per_trade: float | None = Field(default=None, gt=0, le=1)
+	current_exposure: float | None = Field(default=None, ge=0, le=1)
+	max_exposure: float | None = Field(default=None, gt=0, le=1)
 
 
 class Task(BaseModel):
@@ -22,5 +23,5 @@ class Task(BaseModel):
 	symbol: str = Field(min_length=3)
 	timeframe: Literal["15m", "1h", "4h", "1d"] = "1h"
 	objective: str = "analyze_trade_setup"
-	risk: RiskInput
-	created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+	risk: RiskInput | None = None
+	created_at: datetime = Field(default_factory=lambda: datetime.now(ZoneInfo("America/Chicago")))

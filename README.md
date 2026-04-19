@@ -20,8 +20,8 @@
 
 系统会接收一个交易任务 `Task`，然后：
 
-- 技术分析智能体读取 mock 市场数据，输出技术面报告
-- 新闻情绪面智能体读取 mock 新闻，输出情绪面报告
+- 技术分析智能体读取行情数据，输出技术面报告
+- 新闻情绪面智能体读取新闻搜索结果，输出情绪面报告
 - 主智能体融合两者结果，生成草案交易计划
 - 风控智能体根据风险参数、仓位暴露和盈亏比做最终审批
 - 如果风控拒绝，最终动作会被强制改成 `HOLD`
@@ -47,7 +47,7 @@
 所以这个项目当前阶段坚持几个原则：
 
 - `Deterministic first`：先确定性，再智能化
-- `Mock before external APIs`：先用 mock 数据把结构跑通
+- `Mock before external APIs`：默认保留 mock，但允许按模块切换到真实只读数据源
 - `Policy over prompt-only logic`：关键决策放在显式 policy 中
 - `Trace everything important`：记录阶段流转和工具调用
 
@@ -105,13 +105,13 @@
 
 ### 4. Service 层
 
-位于 `app/services/`，目前提供稳定接口和 mock 实现：
+位于 `app/services/`，目前提供稳定接口以及可切换 provider：
 
-- `market_data_service.py`
-- `news_service.py`
-- `risk_service.py`
+- `market_data_service.py`：mock 或 WEEX 行情
+- `news_service.py`：mock 或 Tavily 新闻搜索
+- `risk_service.py`：mock 或 WEEX 账户快照
 - `storage_service.py`
-- `llm_client.py`
+- `llm_client.py`：stub 或 OpenAI-compatible 解释增强
 
 这里的重点不是“能力强”，而是“接口稳定”，方便未来逐步替换成真实实现。
 
@@ -159,6 +159,7 @@
 - schema validation
 - execution trace
 - workflow-level orchestration
+- optional constrained LLM explanation layer
 
 ### 技术栈
 
@@ -201,13 +202,13 @@
 - sentiment impact thresholds
 - risk/reward 审批阈值
 
-### 3. 真实外部 API 过早接入会拖慢 MVP
+### 3. 真实外部 API 集成需要与边界解耦
 
 问题：
-交易所 API、新闻 API、账户 API 一旦进来，复杂度会迅速上升。
+交易所 API、新闻 API、账户 API 一旦直接写进 agent/tool，会迅速把职责边界打乱。
 
 解决：
-先通过 deterministic mock services 验证架构、工具和决策流程是否成立。
+把真实集成下沉到 `service`/provider 层，让 tool 和 agent 继续消费稳定 contract。
 
 ### 4. 风控容易沦为“建议”而不是“硬约束”
 
@@ -250,7 +251,7 @@
 
 - 引入受约束的 LLM 辅助，而不是放开式生成
 - 用 LangGraph 管理复杂状态和分支
-- 接入真实行情与新闻数据源
+- 接入真实行情、新闻搜索与账户数据源
 - 加入历史回测与模拟执行
 
 ### Phase 4: 真实交易前的最后一层

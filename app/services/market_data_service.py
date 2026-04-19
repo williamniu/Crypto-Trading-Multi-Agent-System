@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
+
+from app.config.settings import Settings, load_settings
+from app.services.weex_api_client import WEEXAPIClient
 
 
 _BASE_CLOSES: dict[str, list[float]] = {
@@ -19,7 +23,26 @@ _TIMEFRAME_DRIFT = {
 
 @dataclass(frozen=True)
 class MarketDataService:
-    """Deterministic mock market data provider for MVP development."""
+    """Market data facade with mock and WEEX-backed implementations."""
+
+    settings: Settings | None = None
+    weex_client: WEEXAPIClient | None = None
+
+    def __post_init__(self) -> None:
+        resolved_settings = self.settings or load_settings()
+        object.__setattr__(self, "settings", resolved_settings)
+        if self.weex_client is None:
+            object.__setattr__(
+                self,
+                "weex_client",
+                WEEXAPIClient(
+                    contract_base_url=resolved_settings.weex_contract_base_url,
+                    spot_base_url=resolved_settings.weex_spot_base_url,
+                    api_key=resolved_settings.weex_api_key,
+                    api_secret=resolved_settings.weex_api_secret,
+                    api_passphrase=resolved_settings.weex_api_passphrase,
+                ),
+            )
 
     def get_ohlcv(
         self,
@@ -27,6 +50,53 @@ class MarketDataService:
         symbol: str,
         timeframe: str,
         limit: int = 6,
+    ) -> list[dict[str, float]]:
+        if self.settings.market_data_provider == "weex":
+            return self._get_weex_ohlcv(symbol=symbol, timeframe=timeframe, limit=limit)
+        return self._get_mock_ohlcv(symbol=symbol, timeframe=timeframe, limit=limit)
+
+    def _get_weex_ohlcv(
+        self,
+        *,
+        symbol: str,
+        timeframe: str,
+        limit: int,
+    ) -> list[dict[str, float]]:
+        if self.settings.weex_market_type == "spot":
+            raw_klines = self.weex_client.get_spot_klines(
+                symbol=symbol.upper(),
+                interval=timeframe,
+                limit=limit,
+            )
+        else:
+            raw_klines = self.weex_client.get_contract_klines(
+                symbol=symbol.upper(),
+                interval=timeframe,
+                limit=limit,
+            )
+
+        klines = raw_klines.get("data", raw_klines) if isinstance(raw_klines, dict) else raw_klines
+        candles: list[dict[str, float]] = []
+        for item in klines[:limit]:
+            candles.append(
+                {
+                    "open_time": float(item[0]),
+                    "open": float(item[1]),
+                    "high": float(item[2]),
+                    "low": float(item[3]),
+                    "close": float(item[4]),
+                    "volume": float(item[5]),
+                    "close_time": float(item[6]),
+                }
+            )
+        return candles
+
+    def _get_mock_ohlcv(
+        self,
+        *,
+        symbol: str,
+        timeframe: str,
+        limit: int,
     ) -> list[dict[str, float]]:
         if limit < 3:
             raise ValueError("limit must be at least 3 for indicator calculation")
@@ -58,8 +128,4 @@ class MarketDataService:
             template = [50.0 + seed + offset for offset in (0.0, 0.8, 1.4, 1.1, 2.0, 2.6)]
 
         drift = _TIMEFRAME_DRIFT.get(timeframe, 0.25)
-        closes = [
-            round(price + drift * index, 2)
-            for index, price in enumerate(template[:limit])
-        ]
-        return closes
+        return [round(price + drift * index, 2) for index, price in enumerate(template[:limit])]

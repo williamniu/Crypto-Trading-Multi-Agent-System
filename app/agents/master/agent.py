@@ -7,6 +7,7 @@ from app.agents.base.execution_trace import ExecutionTrace
 from app.agents.risk_officer.agent import RiskOfficerAgent
 from app.agents.sentiment_analyst.agent import SentimentAnalystAgent
 from app.agents.ta_analyst.agent import TAAnalystAgent
+from app.services.llm_client import LLMClient
 
 
 BUY_THRESHOLD = 0.15
@@ -22,11 +23,13 @@ class MasterAgent(BaseAgent):
         ta_agent: TAAnalystAgent | None = None,
         sentiment_agent: SentimentAnalystAgent | None = None,
         risk_agent: RiskOfficerAgent | None = None,
+        llm_client: LLMClient | None = None,
     ) -> None:
         super().__init__(name="master_agent")
         self.ta_agent = ta_agent or TAAnalystAgent()
         self.sentiment_agent = sentiment_agent or SentimentAnalystAgent()
         self.risk_agent = risk_agent or RiskOfficerAgent()
+        self.llm_client = llm_client or LLMClient()
 
     def run(
         self,
@@ -59,6 +62,12 @@ class MasterAgent(BaseAgent):
             trace.add_stage("risk_complete")
 
         final_plan = self._finalize_trade_plan(draft_plan=draft_plan, risk_report=risk_report)
+        final_plan = self._maybe_add_llm_note(
+            final_plan=final_plan,
+            ta_report=ta_report,
+            sentiment_report=sentiment_report,
+            risk_report=risk_report,
+        )
         return {
             "task": payload,
             "ta_report": ta_report,
@@ -143,3 +152,35 @@ class MasterAgent(BaseAgent):
             "approved": approved,
             "reasons": reasons,
         }
+
+    def _maybe_add_llm_note(
+        self,
+        *,
+        final_plan: dict[str, Any],
+        ta_report: dict[str, Any],
+        sentiment_report: dict[str, Any],
+        risk_report: dict[str, Any],
+    ) -> dict[str, Any]:
+        if not self.llm_client.enabled:
+            return final_plan
+
+        prompt = (
+            "Summarize this already-approved trading workflow output in one short sentence.\n"
+            f"Plan: {final_plan}\n"
+            f"TA: {ta_report}\n"
+            f"Sentiment: {sentiment_report}\n"
+            f"Risk: {risk_report}"
+        )
+        constraints = {
+            "do_not_change_action": final_plan["action"],
+            "do_not_change_approval": final_plan["approved"],
+            "max_sentences": 1,
+        }
+        llm_result = self.llm_client.generate(prompt, constraints=constraints)
+        llm_message = str(llm_result.get("message", "")).strip()
+        if not llm_message:
+            return final_plan
+
+        notes = list(final_plan.get("notes", []))
+        notes.append(f"LLM summary: {llm_message}")
+        return {**final_plan, "notes": notes}
